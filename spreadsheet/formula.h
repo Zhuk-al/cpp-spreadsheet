@@ -3,7 +3,9 @@
 #include "common.h"
 
 #include <memory>
+#include <variant>
 #include <vector>
+#include <sstream>
 
 // Формула, позволяющая вычислять и обновлять арифметическое выражение.
 // Поддерживаемые возможности:

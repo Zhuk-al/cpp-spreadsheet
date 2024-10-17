@@ -26,17 +26,26 @@ void Cell::Set(std::string text) {
         new_impl = std::make_unique<TextImpl>(std::move(text));
     }
 
-    if (CheckCircularDependency(new_impl)) {
-        throw CircularDependencyException("Circular dependency detected");
-    }
+    // Проверка на циклическую зависимость
+    CheckCircularDependency(new_impl);
 
-    // Обновляем зависимости и кэш
+    // Обновление зависимостей
+    UpdateDependencies(*new_impl);
+
+    // Обновление кэша
+    UpdateCache(std::move(new_impl));
+}
+
+// Метод для обновления зависимостей
+void Cell::UpdateDependencies(const Impl& new_impl) {
+    // Очистка старых зависимостей
     for (Cell* ref : referenced_cells_) {
         ref->dependent_cells_.erase(this);
     }
     referenced_cells_.clear();
 
-    for (const auto& pos : new_impl->GetReferencedCells()) {
+    // Установка новых зависимостей
+    for (const auto& pos : new_impl.GetReferencedCells()) {
         Cell* ref_cell = sheet_.GetConcreteCell(pos);
         if (!ref_cell) {
             sheet_.SetCell(pos, "");
@@ -45,13 +54,16 @@ void Cell::Set(std::string text) {
         referenced_cells_.insert(ref_cell);
         ref_cell->dependent_cells_.insert(this);
     }
+}
 
+// Метод для обновления кэша
+void Cell::UpdateCache(std::unique_ptr<Impl> new_impl) {
     impl_ = std::move(new_impl);
     InvalidateAllCache(true);
 }
 
 void Cell::Clear() {
-    impl_ = std::make_unique<EmptyImpl>();
+    Set("");
 }
 
 Cell::Value Cell::GetValue() const {
@@ -89,7 +101,7 @@ bool Cell::CheckCircularDependency(const std::unique_ptr<Impl>& impl) {
     for (const auto& pos : ref_cells) {
         Cell* ref_cell = sheet_.GetConcreteCell(pos);
         if (ref_cell == this) {
-            return true; // Циклическая зависимость
+            throw CircularDependencyException("Circular dependency detected"); // Циклическая зависимость
         }
         to_visit.push(ref_cell);
     }
@@ -105,7 +117,7 @@ bool Cell::CheckCircularDependency(const std::unique_ptr<Impl>& impl) {
 
         for (const Cell* dep : curr->dependent_cells_) {
             if (dep == this) {
-                return true; // Циклическая зависимость
+                throw CircularDependencyException("Circular dependency detected"); // Циклическая зависимость
             }
             to_visit.push(dep);
         }

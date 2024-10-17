@@ -75,4 +75,6 @@ private:
     std::set<Cell*> referenced_cells_;
     
     bool CheckCircularDependency(const std::unique_ptr<Impl>& impl);
+    void UpdateDependencies(const Impl& new_impl);
+    void UpdateCache(std::unique_ptr<Impl> new_impl);
 };
